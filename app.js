@@ -1,32 +1,22 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
-const User = require('./models/userModel');
+const Dummy = require('./models/userModel');
 
 
 const app = express();
 
 // connect to mongodb
-mongoose.connect('mongodb://localhost/OoonoDB'); 
-mongoose.Promise = global.Promise;
-
-// // ROUTES - with DB
-// app.use('/api/v1/places', require('./routes/places'));
-
-// mongoose.connect(process.env.MONGO_URI, {
-//     useUnifiedTopology: true,
-//     useNewUrlParser: true,
-// })
-// .then(() => console.log(`MongoDB connected successfully!`))
-// .catch( (error) => {
-//     console.log(error)
-//     process.exit(1);
-// });
-
+mongoose.connect('mongodb://localhost/ooonoDB'); 
 
 // body parser
 app.use(bodyParser.json());
 
+// error handling middleware
+app.use((err, req, res, next) => {
+    //console.log(err);
+    res.status(422).send({ error: err.message });
+});
 
 // Dummy User
 app.get('/me', (req, res) => {
@@ -34,51 +24,71 @@ app.get('/me', (req, res) => {
 });
 
 
+// Get all users
+app.get('/places', (req, res) => {
+    Dummy.find({}).then((dummys) => {
+        res.send(dummys)
+    })
+});
 
-// app.get('/places', (req, res) => {
-    
-//     res.send(users);
-// });
+// Get user by ID
+app.get('/places/:id', (req, res) => {
+    Dummy.findOne({ _id: req.params.id }).then((dummy) => {
+        console.log(dummy);
+        console.log(`DummyUser with the id ${dummy._id} was found`);
+        res.send(dummy);
+    });
+});
 
-// app.get('/places/:id', (req, res) => {
-//     const user = users.find(c => c.id === parseInt(req.params.id));
-
-//     if (!user) res.status(404).send('The user with the given ID was not found')
-//     res.send(user);
-// });
-
+// Get users withing a certain range (lat and lng specified in query-string) - placed on another route
+app.get('/near', (req, res, next) => {
+    Dummy.aggregate([
+        {
+          $geoNear: {
+            near: {
+              type: "Point",
+              coordinates: [parseFloat(req.query.lng), parseFloat(req.query.lat)],
+            },
+            distanceField: "dist.calculated",
+            maxDistance: 50000,
+            spherical: true
+          },
+        },
+      ])
+        .then((dummy) => {
+          res.send(dummy);
+        })
+        .catch(next);
+});
 
 // Add new user to DB
 app.post('/places', (req, res, next) => {
-    User.create(req.body).then((user) => {
-        res.send(user);
+    console.log(req.body);
+    Dummy.create(req.body).then((dummy) => {
+        res.send(dummy);
     }).catch(next);
 });
 
-// app.patch('/api/places/:id', (req, res) => {
-//     const user = users.find(c => c.id === parseInt(req.params.id));
-//     if (!user) return res.status(404).send('The user with the given ID was not found.');
-//     user.id = users.length; // maybe not implement this line. since we dont want to update the userID.
-//     user.name = req.body.name;
-//     // user.geoJSON = req.body.geoJSON;
-//     res.send(user);
-// });
-
-// app.delete('/api/places/:id', (req, res) => {
-//     const user = users.find(c => c.id === parseInt(req.params.id));
-
-//     const index = users.indexOf(user);
-//     users.splice(index, 1);
-
-//     res.send(user);
-// });
-
-
-// error handling middleware
-app.use((err, req, res, next) => {
-    //console.log(err);
-    res.status(422).send({ error: err.message });
+// Update User 
+app.patch('/places/:id', (req, res, next) => {
+    Dummy.findByIdAndUpdate({ _id: req.params.id }, req.body).then((dummy) => {
+        Dummy.findOne({ _id: req.params.id }).then((dummy) => {
+            console.log(dummy);
+            res.send(dummy);
+        }).catch(next);
+    });
 });
+
+// Delete user
+app.delete('/places/:id', (req, res) => {
+    Dummy.findByIdAndRemove({ _id: req.params.id }, req.body).then((dummy) => {
+        console.log(dummy);
+        console.log(`Dummy user with the name: ${dummy.name} was deleted`);
+        res.send(dummy);
+    }).catch(next);
+});
+
+
 
 const server = app.listen(process.env.PORT || 8080, (error) => {
 if (error) {

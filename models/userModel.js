@@ -13,7 +13,7 @@ const GeoSchema = new Schema({
     },
 });
 
-const UserSchema = new Schema({
+const DummySchema = new Schema({
     name: {
         type: String,
         required: [true, "Name field is required"],
@@ -25,6 +25,6 @@ const UserSchema = new Schema({
     geometry: GeoSchema,
 });
 
-const User = mongoose.model('user', UserSchema);
+const Dummy = mongoose.model('dummy', DummySchema);
 
-module.exports = User;
+module.exports = Dummy;
